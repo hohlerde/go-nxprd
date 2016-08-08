@@ -8,7 +8,7 @@ Right now only Mifare Ultralight cards are supported for reading and writing
 bytes. This may change in the future, but currently I only have the Ultralight
 card that was shipped with the NFC board.  
 
-This wrapper was heavily inspired by svvitale's [nxppy](https://github.com/svvitale/nxppy) python wrapper. I use a slightly modified version of his nice bash script ([get_nxpRdLib.sh](https://github.com/svvitale/nxppy/blob/master/get_nxpRdLib.sh)).
+This wrapper was heavily inspired by svvitale's [nxppy](https://github.com/svvitale/nxppy) python wrapper. I use a slightly modified version of his nice bash script ([get_nxpRdLib.sh](https://github.com/hohlerde/go-nxprd/blob/master/get_nxpRdLib.sh)).
 
 ## License
 All files in this repository are distributed under the MIT license.
@@ -174,7 +174,7 @@ At the end we need to cleanup the wrapper and the NFC Reader Library by calling 
 nxprd.DeInit()
 ```
 
-As an example you also may want to take a look at the [test application](test).
+As an example you also may want to take a look at the [test application](https://github.com/hohlerde/go-nxprd/blob/master/cmd/gomful/main.go).
 
 ## Feedback
 Feedback and PRs are always welcome!
