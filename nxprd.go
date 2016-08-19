@@ -1186,6 +1186,7 @@ phStatus_t MifareUL_Write_Block(uint8_t blockIdx, void *data)
 */
 import "C"
 import (
+	"runtime"
 	"sync"
 	"time"
 	"unsafe"
@@ -1422,12 +1423,18 @@ func createDevParams() DeviceParams {
 // of this wrapper are used. A NxpError is returned in case of an error, otherwise
 // nil is returned.
 func Init() error {
+	// After initialization the C library needs to be called from the same OS
+	// thread
+	runtime.LockOSThread()
+
 	libLock.Lock()
 	defer libLock.Unlock()
 
 	C.Set_Interface_Link()
 	C.Reset_reader_device()
 
+	// Note: The calling OS thread will be stored by the C library for event
+	// handling
 	status := C.NfcRdLibInit()
 	if status != C.PH_ERR_SUCCESS {
 		return createLibErr(int(status))
@@ -1442,9 +1449,12 @@ func Init() error {
 // used anymore, e.g. at the end of the application.
 func DeInit() {
 	libLock.Lock()
-	defer libLock.Unlock()
-
 	C.Cleanup_Interface_Link()
+	libLock.Unlock()
+
+	// The go runtime is now free to re-bind this goroutine to another OS
+	// thread
+	runtime.UnlockOSThread()
 }
 
 // Discover selects a card/tag that is in the range of the breakout board and
