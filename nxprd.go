@@ -1208,7 +1208,7 @@ type Reader interface {
 	// If data could be read, error will be always nil.
 	ReadBlock(idx int) ([]byte, error)
 	//Returns the entire contents of a card or tag as a NDEF struct
-	ReadNdef() (Ndef, error)
+	ReadNdef() (*Ndef, error)
 }
 
 // Writer defines an interface for writing data to a nfc capable card/tag.
@@ -1269,18 +1269,18 @@ const (
 	payloadLengthIndex     = 2
 	payloadTypeStartIndex  = 3
 	idStartIndex           = 5
-	UserBlockStartIndex    = 4
-	UserBlockEndIndex      = 15
+	userBlockStartIndex    = 4
+	userBlockEndIndex      = 15
 )
 
 //Values of bits in the first byte of NDEF.
 //Example-The 7th bit is Message Begin(MB). Hence MB = 2^7 = 128
 const (
-	MB = 128
-	ME = 64
-	CF = 32
-	SR = 16
-	IL = 8
+	mb = 128
+	me = 64
+	cf = 32
+	sr = 16
+	il = 8
 )
 
 //A struct which represents the NDEF message
@@ -1311,13 +1311,12 @@ type NdefRecord struct {
 
 //This function reads the data from the card using the ReadBlock method and
 //converts the read bytes into a NDEF struct.
-func (r *MifareULReader) ReadNdef() (Ndef, error) {
-	var ndef Ndef
+func (r *MifareULReader) ReadNdef() (*Ndef, error) {
 	buf := new(bytes.Buffer)
-	for i := UserBlockStartIndex; i <= UserBlockEndIndex; i++ {
+	for i := userBlockStartIndex; i <= userBlockEndIndex; i++ {
 		tempBuf, err := r.ReadBlock(i)
 		if err != nil {
-			return ndef, err
+			return nil, err
 
 		}
 		buf.Write(tempBuf)
@@ -1329,20 +1328,20 @@ func (r *MifareULReader) ReadNdef() (Ndef, error) {
 	//This gives the Max Size of the user block that can be used to for user data.
 	intval, err := strconv.Atoi(strconv.FormatInt(int64(data[1]), 16))
 	if err != nil {
-		return ndef, err
+		return nil, err
 	}
 	//This value holds the total length of the NDEF message.
 	totalMessageLength := int(temp[1])
-	//Slicing of the first two bytes since it is already processed and the following bytes is the actual NDEF message.
+	//Slicing of the first two bytes since it is already processed and the bytes following is the actual NDEF message.
 	//The first byte is discarded since it is always 3 for NDEF messages
 	temp = temp[2:]
 	//Construct the NDEF struct to be returned.
-	ndef = Ndef{
+	ndef := Ndef{
 		NdefData:           createNdefMessages(temp),
 		MaxSize:            intval,
 		TotalMessageLength: totalMessageLength,
 		IsReadOnly:         !(int(data[2]) == 0 && int(data[3]) == 0)}
-	return ndef, err
+	return &ndef, err
 
 }
 
@@ -1354,19 +1353,19 @@ func (r *MifareULReader) ReadNdef() (Ndef, error) {
 //So if we & 128 with some other number we always get 0
 //10000000 & 01111111 = 00000000
 func isMessageBeginSet(recordByte int) bool {
-	return (recordByte & MB) == MB
+	return (recordByte & mb) == mb
 }
 func isMessageEndSet(recordByte int) bool {
-	return (recordByte & ME) == ME
+	return (recordByte & me) == me
 }
 func isShortRecord(recordByte int) bool {
-	return (recordByte & SR) == SR
+	return (recordByte & sr) == sr
 }
 func isChunkFlagSet(recordByte int) bool {
-	return (recordByte & CF) == CF
+	return (recordByte & cf) == cf
 }
 func isIdLengthFieldPresent(recordByte int) bool {
-	return (recordByte & IL) == IL
+	return (recordByte & il) == il
 }
 
 //TNF can take value from 0 to 7.It can take the below values.
@@ -1455,7 +1454,6 @@ type MifareULWriter struct {
 func (w *MifareULWriter) WriteBlock(idx int, data []byte) error {
 	libLock.Lock()
 	defer libLock.Unlock()
-
 	var buffer [MifareULBlockLength]byte
 	// Only MifareULBlockLength bytes will be copied to buffer.
 	copy(buffer[:], data)
@@ -1473,9 +1471,8 @@ func (w *MifareULWriter) WriteBlock(idx int, data []byte) error {
 //and writes it to a NFC tag or card
 func (w *MifareULWriter) WriteNdef(ndef *Ndef) error {
 	ndefBytes := createBytesFromNdefStruct(ndef)
-	err := writeToDevice(ndefBytes, w)
+	err := writeToMifareUL(ndefBytes, w)
 	return err
-
 }
 
 //WriteString accepts a string and the language of the string and
@@ -1489,14 +1486,14 @@ func (w *MifareULWriter) WriteString(payload string, language Language) error {
 type Tnf int
 
 const (
-	Empty Tnf = iota
-	Nfcrtd
-	Rfc2046
-	Rfc3986
-	Nfcrtdexternal
-	Unknowntnf
-	Unchanged
-	Reserved
+	TnfEmpty Tnf = iota
+	TnfNfcrtd
+	TnfRfc2046
+	TnfRfc3986
+	TnfNfcrtdexternal
+	TnfUnknown
+	TnfUnchanged
+	TnfReserved
 )
 
 var tnfs = [...]string{
@@ -1518,17 +1515,17 @@ func (tn Tnf) String() string {
 type Language string
 
 const (
-	En Language = "en"
-	De          = "de"
-	It          = "it"
-	Nl          = "nl"
-	Fr          = "fr"
-	Ru          = "ru"
-	Kr          = "kr"
-	Cn          = "cn"
-	Uk          = "uk"
-	Ca          = "ca"
-	Es          = "es"
+	LangEn Language = "en"
+	LangDe          = "de"
+	LangIt          = "it"
+	LangNl          = "nl"
+	LangFr          = "fr"
+	LangRu          = "ru"
+	LangKr          = "kr"
+	LangCn          = "cn"
+	LangUk          = "uk"
+	LangCa          = "ca"
+	LangEs          = "es"
 )
 
 //This function creates the first byte of the NDEF based on the respective values in the struct.
@@ -1541,20 +1538,20 @@ const (
 func getFirstByte(ndefRecord NdefRecord) byte {
 	var b byte
 	if ndefRecord.IsStartRecord {
-		b = b | MB
+		b = b | mb
 
 	}
 	if ndefRecord.IsEndRecord {
-		b = b | ME
+		b = b | me
 	}
 	if ndefRecord.ChunkFlag {
-		b = b | CF
+		b = b | cf
 	}
 	if ndefRecord.IsShortRecord {
-		b = b | SR
+		b = b | sr
 	}
 	if ndefRecord.IsIdLengthFieldPresent {
-		b = b | IL
+		b = b | il
 	}
 	b = b | byte(ndefRecord.Tnf)
 	return b
@@ -1582,7 +1579,7 @@ func createBytesFromNdefStruct(ndef *Ndef) []byte {
 }
 
 //This function writes the bytes to the device
-func writeToDevice(ndefBytes []byte, writer *MifareULWriter) error {
+func writeToMifareUL(ndefBytes []byte, writer *MifareULWriter) error {
 	var data = make([]byte, 4, 4)
 	//These 2 bytes need total be added at the begining of an NDEF message.
 	//The 0 byte should be set to 3 for NDEF messages
