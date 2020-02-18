@@ -1,3 +1,7 @@
+# Important
+
+**This repository has moved to https://codeberg.org/hohlerde/go-nxprd**
+
 # go-nxprd
 
 go-nxprd is a very *simple* wrapper written in GO for NXP's NFC Reader Library
